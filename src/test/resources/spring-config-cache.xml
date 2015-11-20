@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:cache="http://www.springframework.org/schema/cache"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+                   http://www.springframework.org/schema/cache
+                   http://www.springframework.org/schema/cache/spring-cache.xsd">
+
+
+    <cache:annotation-driven cache-manager="cacheManager" proxy-target-class="true"/>
+
+    <bean id="configClient" class="com.jd.cachecloud.cfs.client.ConfigRESTClientFactoryBean"/>
+
+    <!--redis 1.3.2 客户端配置-->
+    <bean id="redisClient" class="com.jd.cachecloud.client.ReloadableRedisClientFactoryBean">
+        <property name="configClient" ref="configClient"/>
+        <property name="configId" value="/redis/cluster/17"/>
+        <property name="token" value="1417623612434"/>
+    </bean>
+
+    <bean id="mqService" class="com.jd.o2o.enhance.localcache.mapdb.sync.RedisMQClient">
+        <constructor-arg value="cache_channel"/>
+        <constructor-arg ref="redisClient"/>
+    </bean>
+
+    <bean id="configuration" class="com.jd.o2o.enhance.localcache.mapdb.MapDBCacheConfiguration">
+        <property name="keyClazz" value="java.lang.Object"/>
+        <property name="valueClazz" value="java.lang.Object"/>
+        <property name="storeSizeByG" value="0.1"/>
+        <property name="expireTime" value="30"/>
+        <property name="expireTimeUnit" value="SECONDS"/>
+        <property name="storeType" value="MEMORY_DIRECT"/>
+        <property name="syncEnabled" value="true"/>
+        <property name="mapdbSyncMQService" ref="mqService"/>
+    </bean>
+
+    <bean id="cache" class="com.jd.o2o.enhance.localcache.spring.CacheFactoryBean">
+        <property name="cacheName" value="test" />
+        <property name="configuration" ref="configuration" />
+    </bean>
+
+
+
+    <!-- spring-cache -->
+    <bean id="cacheManager" class="com.jd.o2o.enhance.localcache.spring.SpringCacheManager">
+        <property name="caches">
+            <set>
+                <bean class="com.jd.o2o.enhance.localcache.spring.SpringCache">
+                    <constructor-arg ref="cache"/>
+                </bean>
+            </set>
+        </property>
+    </bean>
+
+</beans>
